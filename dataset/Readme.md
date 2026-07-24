@@ -36,8 +36,9 @@ dataset/
 ├── hh_demographic.csv
 ├── product.csv
 └── README.md # source + download instructions for full files
+```
 
-## Note on File Sizes
+## Note on File Sizes:
 
 `transaction_data.csv` (~138 MB) and `causal_data.csv` (~679 MB) are **not included in this repo** as
 both exceed GitHub's 100MB file size
