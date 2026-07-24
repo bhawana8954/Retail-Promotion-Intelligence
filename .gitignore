@@ -1,3 +1,7 @@
-datasets/*.csv
+# Raw data - excluded due to GitHub's 100MB file size limit
+datasets/transaction_data.csv
+datasets/causal_data.csv
+
+# Python cache
 *.pyc
 __pycache__/
