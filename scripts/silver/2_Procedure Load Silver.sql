@@ -80,14 +80,19 @@ BEGIN
 			store_id,
 			week_no,
 			display,
-			mailer
+			mailer,
+			is_unknown_mailer_code
 		)
 		SELECT DISTINCT
 			TRY_CAST(product_id AS INT) AS product_id,
 			TRY_CAST(store_id AS INT) AS store_id,
 			TRY_CAST(week_no AS SMALLINT) AS week_no,
 			TRIM(display) AS display,
-			TRIM(mailer) AS mailer
+			TRIM(mailer) AS mailer,
+			CASE 
+				WHEN TRIM(mailer) = '0' THEN 1 
+				ELSE 0 
+			END AS is_unknown_mailer_code
 		FROM bronze.causal_data
 		WHERE TRY_CAST(product_id AS INT) IS NOT NULL AND
 			  TRY_CAST(store_id AS INT) IS NOT NULL AND
@@ -240,6 +245,35 @@ BEGIN
 			  TRY_CAST(basket_id AS BIGINT) IS NOT NULL AND 
 			  TRY_CAST(product_id AS INT) IS NOT NULL AND 
 			  TRY_CAST(store_id AS INT) IS NOT NULL;
+		SET @end_time = GETDATE();
+		PRINT '>> Load Duration: ' + CAST(DATEDIFF(second, @start_time, @end_time) AS NVARCHAR) + ' seconds';
+		PRINT '>> -------------';
+
+		SET @start_time = GETDATE();
+		PRINT '>> Inserting Unknown placeholder rows into: silver.hh_demographic';
+		INSERT INTO silver.hh_demographic (
+			age_group,
+			marital_status_group,
+			income_level,
+			homeownership_status,
+			household_composition,
+			household_size,
+			kid_category,
+			household_key
+		)
+		SELECT DISTINCT
+			'Unknown',
+			'U',
+			'Unknown',
+			'Unknown',
+			'Unknown',
+			'Unknown',
+			'Unknown',
+			t.household_key
+		FROM silver.transaction_data t
+		WHERE NOT EXISTS (
+			SELECT 1 FROM silver.hh_demographic h
+			WHERE h.household_key = t.household_key);
 		SET @end_time = GETDATE();
 		PRINT '>> Load Duration: ' + CAST(DATEDIFF(second, @start_time, @end_time) AS NVARCHAR) + ' seconds';
 		PRINT '>> -------------';

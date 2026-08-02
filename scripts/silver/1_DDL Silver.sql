@@ -39,12 +39,13 @@ IF OBJECT_ID ('silver.causal_data', 'U') IS NOT NULL
 GO
 
 CREATE TABLE silver.causal_data (
-    product_id       INT,
-    store_id         INT,
-    week_no          SMALLINT,
-    display          CHAR(1),
-    mailer           CHAR(1),
-    dwh_create_date  DATETIME2 DEFAULT GETDATE()
+    product_id             INT,
+    store_id               INT,
+    week_no                SMALLINT,
+    display                CHAR(1),
+    mailer                 CHAR(1),
+    is_unknown_mailer_code BIT,
+    dwh_create_date        DATETIME2 DEFAULT GETDATE()
 );
 GO
 
