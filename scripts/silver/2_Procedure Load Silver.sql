@@ -75,28 +75,46 @@ BEGIN
 		TRUNCATE TABLE silver.causal_data;
 
 		PRINT '>> Inserting Data into: silver.causal_data';
+		SET @start_time = GETDATE();
+		PRINT '>> Truncating Table: silver.causal_data';
+		TRUNCATE TABLE silver.causal_data;
+
+		PRINT '>> Inserting Data into: silver.causal_data';
+
 		INSERT INTO silver.causal_data (
 			product_id,
 			store_id,
 			week_no,
 			display,
 			mailer,
-			is_unknown_mailer_code
+			is_unknown_display_code,
+			is_unknown_mailer_code,
+			is_ambiguous_promotion
 		)
-		SELECT DISTINCT
-			TRY_CAST(product_id AS INT) AS product_id,
-			TRY_CAST(store_id AS INT) AS store_id,
-			TRY_CAST(week_no AS SMALLINT) AS week_no,
-			TRIM(display) AS display,
-			TRIM(mailer) AS mailer,
-			CASE 
-				WHEN TRIM(mailer) = '0' THEN 1 
-				ELSE 0 
-			END AS is_unknown_mailer_code
-		FROM bronze.causal_data
-		WHERE TRY_CAST(product_id AS INT) IS NOT NULL AND
-			  TRY_CAST(store_id AS INT) IS NOT NULL AND
-			  TRY_CAST(week_no AS SMALLINT) IS NOT NULL;
+		SELECT
+			product_id,
+			store_id,
+			week_no,
+			COALESCE(MAX(CASE WHEN display <> '0' THEN display END), '0') AS display,
+			COALESCE(MAX(CASE WHEN mailer  <> '0' THEN mailer  END), '0') AS mailer,
+			CASE WHEN MAX(CASE WHEN display <> '0' THEN display END) IS NULL THEN 1 ELSE 0 END AS is_unknown_display_code,
+			CASE WHEN MAX(CASE WHEN mailer  <> '0' THEN mailer  END) IS NULL THEN 1 ELSE 0 END AS is_unknown_mailer_code,
+			CASE WHEN COUNT(DISTINCT CASE WHEN display <> '0' THEN display END) > 1
+				   OR COUNT(DISTINCT CASE WHEN mailer  <> '0' THEN mailer  END) > 1
+				 THEN 1 ELSE 0 END AS is_ambiguous_promotion
+		FROM (
+			SELECT
+				TRY_CAST(product_id AS INT) AS product_id,
+				TRY_CAST(store_id AS INT) AS store_id,
+				TRY_CAST(week_no AS SMALLINT) AS week_no,
+				TRIM(display) AS display,
+				TRIM(mailer) AS mailer
+			FROM bronze.causal_data
+			WHERE TRY_CAST(product_id AS INT) IS NOT NULL AND
+				  TRY_CAST(store_id AS INT) IS NOT NULL AND
+				  TRY_CAST(week_no AS SMALLINT) IS NOT NULL
+		) AS casted
+		GROUP BY product_id, store_id, week_no;
 		SET @end_time = GETDATE();
 		PRINT '>> Load Duration: ' + CAST(DATEDIFF(second, @start_time, @end_time) AS NVARCHAR) + ' seconds';
 		PRINT '>> -------------';
@@ -233,9 +251,9 @@ BEGIN
 			TRY_CAST(day AS SMALLINT),
 			TRY_CAST(product_id AS INT),
 			TRY_CAST(quantity AS INT),
-			TRY_CAST(sales_value AS DECIMAL(10,2)),
+			COALESCE(TRY_CAST(sales_value AS DECIMAL(10,2)),0) AS sales_value,
 			TRY_CAST(store_id AS INT),
-			TRY_CAST(retail_disc AS DECIMAL(10,2)),
+			COALESCE(TRY_CAST(retail_disc AS DECIMAL(10,2)),0) AS retail_disc,
 			TRY_CAST(trans_time AS SMALLINT),
 			TRY_CAST(week_no AS SMALLINT),
 			TRY_CAST(coupon_disc AS DECIMAL(10,2)),
