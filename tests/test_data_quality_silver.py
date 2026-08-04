@@ -14,7 +14,7 @@ Script Purpose:
     combination, rather than repeating similar code per table.
 
 Usage Example:
-    & "D:\Python 3.14.0\python.exe" -m pytest tests/test_data_quality.py -v
+    & "D:\Python 3.14.0\python.exe" -m pytest tests/test_data_quality_silver.py -v
 ======================================================================================
 """
 
