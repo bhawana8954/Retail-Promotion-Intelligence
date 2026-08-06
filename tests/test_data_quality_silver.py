@@ -168,9 +168,9 @@ def test_causal_data_unknown_mailer_flag_consistency(conn):
     )
 
 def test_causal_data_unknown_mailer_count(conn):
-    """Sanity check against the known investigated count."""
+    """Sanity check against the known investigated count post-deduplication."""
     flagged_rows = _scalar(conn, "SELECT COUNT(*) FROM silver.causal_data WHERE is_unknown_mailer_code = 1")
 
-    assert flagged_rows == 11534183, (
-        f"silver.causal_data: expected 11534183 flagged rows, got {flagged_rows}"
+    assert flagged_rows == 11534087, (
+        f"silver.causal_data: expected 11534087 flagged rows, got {flagged_rows}"
     )
