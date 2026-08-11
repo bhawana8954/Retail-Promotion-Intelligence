@@ -1,320 +1,219 @@
 /*
-===============================================================================
-DDL Script: Create Gold Views
-===============================================================================
+==========================================================================
+DDL Script: Create Gold Layer
+==========================================================================
 Script Purpose:
-	This script creates the views for the Gold layer in the data warehouse.
-	The Gold layer represents the final dimension and fact tables (Star Schema)
-
-	Each view performs transformations and combines data from the Silver layer
-	to produce a clean, enriched and business-ready dataset.
-
-Usage:
-	-These views can be queried directly for analytics and reporting.
-===============================================================================
+	This script creates tables in the 'gold' schema, dropping existing
+	tables if they already exist.
+	Run this script to redefine the DDL structure of 'gold' Tables.
+==========================================================================
 */
 
--- ======================================================================
--- Create Table: gold.calendar_seed;
--- ======================================================================;
-IF OBJECT_ID ('gold.calendar_seed' , 'U') IS NOT NULL
-	DROP TABLE gold.calendar_seed;
+IF OBJECT_ID ('gold.dim_date', 'U') IS NOT NULL
+	DROP TABLE gold.dim_date;
 GO
 
-CREATE TABLE gold.calendar_seed (
-    day_number    SMALLINT   NOT NULL   PRIMARY KEY,
-    calendar_date DATE       NOT NULL
+CREATE TABLE gold.dim_date (
+    date_key        INT             PRIMARY KEY,               
+    full_date       DATE            NOT NULL,                
+    day_no          INT             NOT NULL,              
+    week_no         SMALLINT        NOT NULL,              
+    month_no        TINYINT         NOT NULL,              
+    month_name      VARCHAR(20)     NOT NULL,        
+    quarter         VARCHAR(2)      NOT NULL,            
+    year            INT             NOT NULL,                      
+    day_name        VARCHAR(20)     NOT NULL,          
+    is_weekend      BIT             NOT NULL                 
 );
 GO
 
-WITH seq_CTE AS (
-    SELECT 1 AS day_number
-    UNION ALL
-    SELECT day_number + 1 FROM seq_CTE WHERE day_number < 719
-    )
-INSERT INTO gold.calendar_seed (
-    day_number,
-    calendar_date
-    )
-    SELECT 
-        day_number,
-        DATEADD(DAY, day_number -1, '2020-01-01') AS calendar_date
-    FROM seq_CTE
-    OPTION (MAXRECURSION 719);
-
--- ======================================================================
--- Create Dimension: gold.dim_date;
--- ======================================================================;
-IF OBJECT_ID('gold.dim_date', 'V') IS NOT NULL
-	DROP VIEW gold.dim_date;
+IF OBJECT_ID ('gold.dim_household', 'U') IS NOT NULL
+	DROP TABLE gold.dim_household;
 GO
 
-CREATE VIEW gold.dim_date AS 
-SELECT
-	day_number,
-    calendar_date,
-    YEAR(calendar_date) AS year,
-    DATEPART(QUARTER, calendar_date) AS quarter,
-    MONTH(calendar_date) AS month_number,
-    DATENAME(MONTH, calendar_date) AS month_name,
-    DATEPART(WEEKDAY, calendar_date) AS day_of_week_number,
-    DATENAME(WEEKDAY, calendar_date) AS day_name,
-    CASE 
-        WHEN DATEPART(WEEKDAY, calendar_date) IN (1,7) THEN 1 
-        ELSE 0 
-    END AS is_weekend,
-    CEILING(day_number / 7.0) AS dunnhumby_week_no
-FROM gold.calendar_seed;
+CREATE TABLE gold.dim_household (
+    household_key           INT             PRIMARY KEY,
+    age_group               VARCHAR(20)     NOT NULL,
+    marital_status          VARCHAR(20)     NOT NULL,
+    income_level            VARCHAR(30)     NOT NULL,
+    homeownership_status    VARCHAR(30)     NOT NULL,
+    household_composition   VARCHAR(30)     NOT NULL,
+    household_size          VARCHAR(20)     NOT NULL,
+    kid_category            VARCHAR(20)     NOT NULL,
+    is_unknown_household    BIT             NOT NULL
+);
 GO
 
--- ======================================================================
--- Create Dimension: gold.dim_household;
--- ======================================================================;
-IF OBJECT_ID('gold.dim_household', 'V') IS NOT NULL
-	DROP VIEW gold.dim_household;
+IF OBJECT_ID ('gold.dim_product', 'U') IS NOT NULL
+	DROP TABLE gold.dim_product;
 GO
 
-CREATE VIEW gold.dim_household AS
-SELECT
-    household_key,
-    age_group,
-    marital_status_group AS marital_status,
-    income_level,
-    homeownership_status,
-    household_composition,
-    household_size,
-    kid_category,
-    CASE 
-        WHEN age_group = 'Unknown' THEN 1 
-        ELSE 0 
-    END AS is_unknown_household
-FROM silver.hh_demographic;
+CREATE TABLE gold.dim_product (
+    product_id              INT             PRIMARY KEY,
+    manufacturer            INT             NOT NULL,
+    department              VARCHAR(50)     NOT NULL,
+    brand                   VARCHAR(30)     NOT NULL,
+    commodity_desc          VARCHAR(50)     NOT NULL,
+    sub_commodity_desc      VARCHAR(50)     NOT NULL,
+    curr_size_of_product    VARCHAR(30)     NOT NULL,
+    is_catchall_category    BIT             NOT NULL,        
+    is_unknown_product      BIT             NOT NULL           
+);
 GO
 
--- ======================================================================
--- Create Dimension: gold.dim_product;
--- ======================================================================;
-IF OBJECT_ID('gold.dim_product', 'V') IS NOT NULL
-	DROP VIEW gold.dim_product;
+IF OBJECT_ID ('gold.dim_campaign', 'U') IS NOT NULL
+	DROP TABLE gold.dim_campaign;
 GO
 
-CREATE VIEW gold.dim_product AS
-SELECT
-    product_id,
-    department,
-    commodity_desc,
-    sub_commodity_desc,
-    manufacturer,
-    brand,
-    curr_size_of_product,
-    is_unknown_product
-FROM silver.product;
+CREATE TABLE gold.dim_campaign (
+    campaign_id     SMALLINT        PRIMARY KEY,
+    campaign_type   VARCHAR(20)     NOT NULL,
+    start_day       INT             NOT NULL,
+    end_day         INT             NOT NULL,
+    start_date      DATE            NOT NULL,
+    end_date        DATE            NOT NULL,
+    duration_days   INT             NOT NULL
+);
 GO
 
--- ======================================================================
--- Create Dimension: gold.dim_campaign;
--- ======================================================================;
-IF OBJECT_ID('gold.dim_campaign', 'V') IS NOT NULL
-	DROP VIEW gold.dim_campaign;
+IF OBJECT_ID ('gold.dim_store', 'U') IS NOT NULL
+	DROP TABLE gold.dim_store;
 GO
 
-CREATE VIEW gold.dim_campaign AS
-SELECT
-    cd.campaign          AS campaign_id,
-    cd.description        AS campaign_type,
-    cd.start_day,
-    cd.end_day,
-    sd.calendar_date       AS start_date,
-    ed.calendar_date       AS end_date,
-    DATEDIFF(DAY, sd.calendar_date, ed.calendar_date) + 1 AS duration_days
-FROM silver.campaign_desc cd
-JOIN gold.dim_date sd ON sd.day_number = cd.start_day
-JOIN gold.dim_date ed ON ed.day_number = cd.end_day;
+CREATE TABLE gold.dim_store (
+    store_id    INT     PRIMARY KEY
+);
 GO
 
--- ======================================================================
--- Create Dimension: gold.dim_store;
--- ======================================================================;
-IF OBJECT_ID('gold.dim_store', 'V') IS NOT NULL
-	DROP VIEW gold.dim_store;
+IF OBJECT_ID ('gold.dim_coupon', 'U') IS NOT NULL
+	DROP TABLE gold.dim_coupon;
 GO
 
-CREATE VIEW gold.dim_store AS
-SELECT DISTINCT store_id
-FROM (
-    SELECT store_id FROM silver.transaction_data
-    UNION
-    SELECT store_id FROM silver.causal_data
-) AS combined_stores;
+CREATE TABLE gold.dim_coupon (
+    coupon_upc      VARCHAR(20)     NOT NULL,
+    product_id      INT             NOT NULL,
+    campaign_id     SMALLINT        NOT NULL,
+    campaign_type   VARCHAR(20)     NOT NULL,
+    PRIMARY KEY (coupon_upc, product_id, campaign_id)
+);
 GO
 
--- ======================================================================
--- Create Dimension: gold.dim_coupon;
--- ======================================================================;
-IF OBJECT_ID('gold.dim_coupon', 'V') IS NOT NULL
-	DROP VIEW gold.dim_coupon;
+IF OBJECT_ID ('gold.fact_transactions', 'U') IS NOT NULL
+	DROP TABLE gold.fact_transactions;
 GO
 
-CREATE VIEW gold.dim_coupon AS
-SELECT
-    c.coupon_upc,
-    c.product_id,
-    c.campaign AS campaign_id,
-    dc.campaign_type
-FROM silver.coupon c
-LEFT JOIN gold.dim_campaign dc 
-    ON dc.campaign_id = c.campaign;
+CREATE TABLE gold.fact_transactions (
+    transaction_id      BIGINT IDENTITY(1,1) PRIMARY KEY,
+    date_key            INT             NOT NULL,                  
+    household_key       INT             NOT NULL,             
+    basket_id           BIGINT          NOT NULL,              
+    day_number          INT             NOT NULL,           
+    product_id          INT             NOT NULL,                
+    store_id            INT             NOT NULL,                  
+    trans_time          INT             NOT NULL,           
+    week_no             SMALLINT        NOT NULL,              
+    quantity            INT             NOT NULL,                  
+    sales_value         DECIMAL(10,2)   NOT NULL,     
+    retail_disc         DECIMAL(10,2)   NOT NULL,     
+    coupon_disc         DECIMAL(10,2)   NOT NULL,     
+    coupon_match_disc   DECIMAL(10,2)   NOT NULL
+);
 GO
 
--- ======================================================================
--- Create Dimension: gold.fact_transactions;
--- ======================================================================;
-IF OBJECT_ID('gold.fact_transactions', 'V') IS NOT NULL
-	DROP VIEW gold.fact_transactions;
+IF OBJECT_ID ('gold.fact_coupon_redemption', 'U') IS NOT NULL
+	DROP TABLE gold.fact_coupon_redemption;
 GO
 
-CREATE VIEW gold.fact_transactions AS
-SELECT
-    t.household_key,
-    t.basket_id,
-    t.day AS day_number,
-    t.product_id,
-    t.store_id,
-    t.trans_time,
-    t.week_no,
-    t.quantity,
-    t.sales_value,
-    t.retail_disc,
-    t.coupon_disc,
-    t.coupon_match_disc
-FROM silver.transaction_data t
-LEFT JOIN gold.dim_date d      ON d.day_number = t.day
-LEFT JOIN gold.dim_household h ON h.household_key = t.household_key
-LEFT JOIN gold.dim_product p   ON p.product_id = t.product_id
-LEFT JOIN gold.dim_store s     ON s.store_id = t.store_id;
+CREATE TABLE gold.fact_coupon_redemption (
+    redemption_key BIGINT IDENTITY(1,1) PRIMARY KEY,
+    redemption_event_key    VARCHAR(60)     NOT NULL,   -- household+day+coupon+campaign; NOT unique — repeats when one coupon maps to several products
+    date_key                INT             NOT NULL,                  
+    household_key           INT             NOT NULL,             
+    day_number              INT             NOT NULL,           
+    coupon_upc              VARCHAR(20)     NOT NULL,        
+    campaign_id             SMALLINT        NOT NULL,          
+    product_id              INT             NOT NULL,                    
+    campaign_type           VARCHAR(20)     NOT NULL      
+);
 GO
 
--- ======================================================================
--- Create Table: gold.fact_campaign_lift;
--- ======================================================================;
-
-IF OBJECT_ID('gold.fact_campaign_lift', 'V') IS NOT NULL
-	DROP VIEW gold.fact_campaign_lift;
+IF OBJECT_ID ('gold.fact_executive_daily_summary', 'U') IS NOT NULL
+	DROP TABLE gold.fact_executive_daily_summary;
 GO
 
-CREATE VIEW gold.fact_campaign_lift AS
-WITH household_windows AS (
-        SELECT ct.household_key, 
-               ct.campaign, 
-               cd.start_day, 
-               cd.end_day
-        FROM silver.campaign_table AS ct
-        JOIN silver.campaign_desc AS cd 
-            ON cd.campaign = ct.campaign),
+CREATE TABLE gold.fact_executive_daily_summary (
+    date_key                        INT             PRIMARY KEY,                       
+    actual_sales_amount             DECIMAL(18,2)   NOT NULL,      
+    behavioral_baseline_amount      DECIMAL(18,2)   NOT NULL, 
+    coupon_discount_amount          DECIMAL(18,2)   NOT NULL,  
+    instore_discount_amount         DECIMAL(18,2)   NOT NULL, 
+    total_discount_amount           DECIMAL(18,2)   NOT NULL,   
+    wasted_spend_floored_amount     DECIMAL(18,2)   NOT NULL 
+);
 
-     transactions_flagged AS (
-        SELECT t.household_key,
-               p.commodity_desc AS category,
-               t.day,
-               t.sales_value,
-        CASE WHEN EXISTS (
-                SELECT 1 
-                FROM household_windows AS hw
-                WHERE hw.household_key = t.household_key AND t.day BETWEEN hw.start_day AND hw.end_day) THEN 1 
-             ELSE 0 
-        END AS in_campaign
-        FROM silver.transaction_data AS t
-        JOIN silver.product p 
-            ON p.product_id = t.product_id),
-
-     period_agg AS (
-        SELECT household_key, 
-               category, 
-               in_campaign,
-               SUM(sales_value) AS total_spend,
-               COUNT(DISTINCT day) AS distinct_days
-        FROM transactions_flagged
-        GROUP BY household_key, category, in_campaign),
-
-     pivoted AS (
-     SELECT household_key, 
-            category,
-            MAX(CASE WHEN in_campaign = 0 THEN total_spend END) AS baseline_spend,
-            MAX(CASE WHEN in_campaign = 0 THEN distinct_days END) AS baseline_days,
-            MAX(CASE WHEN in_campaign = 1 THEN total_spend END) AS campaign_spend,
-            MAX(CASE WHEN in_campaign = 1 THEN distinct_days END) AS campaign_days
-     FROM period_agg
-     GROUP BY household_key, category),
-
-     lift_calc AS (
-     SELECT *,
-        baseline_spend / NULLIF(baseline_days, 0) AS baseline_spend_per_day,
-        campaign_spend / NULLIF(campaign_days, 0) AS campaign_spend_per_day,
-        (campaign_spend / NULLIF(campaign_days, 0)) - (baseline_spend / NULLIF(baseline_days, 0)) AS lift_per_day
-     FROM pivoted)
-SELECT
-    household_key,
-    category,
-    baseline_spend, 
-    baseline_days,
-    campaign_spend, 
-    campaign_days,
-    baseline_spend_per_day, 
-    campaign_spend_per_day, 
-    lift_per_day,
-    CASE WHEN category = 'COUPON/MISC ITEMS' THEN 1 
-         ELSE 0 
-    END AS is_catchall_category
-FROM lift_calc
-WHERE baseline_days >= 5 AND campaign_days >= 5;
+IF OBJECT_ID ('gold.fact_campaign_lift', 'U') IS NOT NULL
+	DROP TABLE gold.fact_campaign_lift;
 GO
 
--- ======================================================================
--- Create Table: gold.fact_coupon_redemption;
--- ======================================================================;
-IF OBJECT_ID('gold.fact_coupon_redemption', 'V') IS NOT NULL
-	DROP VIEW gold.fact_coupon_redemption;
+CREATE TABLE gold.fact_campaign_lift (
+    lift_id BIGINT IDENTITY(1,1) PRIMARY KEY,
+    household_key               INT             NOT NULL,                     
+    category                    VARCHAR(50)     NOT NULL,                  
+    baseline_spend              DECIMAL(18,2)   NOT NULL,          
+    baseline_days               INT             NOT NULL,                     
+    campaign_spend              DECIMAL(18,2)   NOT NULL,          
+    campaign_days               INT             NOT NULL,                     
+    baseline_spend_per_day      DECIMAL(10,2)   NOT NULL,  
+    campaign_spend_per_day      DECIMAL(10,2)   NOT NULL,  
+    lift_per_day                DECIMAL(10,2)   NOT NULL,            
+    is_catchall_category        BIT             NOT NULL,              
+    is_reliable_pair            BIT             NOT NULL                   
+);
+
+IF OBJECT_ID ('gold.fact_campaign_category_lift', 'U') IS NOT NULL
+	DROP TABLE gold.fact_campaign_category_lift;
 GO
 
-CREATE VIEW gold.fact_coupon_redemption AS
-SELECT
-    cr.household_key,
-    cr.day AS day_number,
-    cr.coupon_upc,
-    cr.campaign AS campaign_id,
-    dc.product_id,
-    dc.campaign_type,
-    CONCAT(cr.household_key, '-', cr.day, '-', cr.coupon_upc, '-', cr.campaign) AS redemption_event_key
-FROM silver.coupon_redempt cr
-LEFT JOIN gold.dim_coupon dc
-    ON dc.coupon_upc = cr.coupon_upc
-       AND dc.campaign_id = cr.campaign;
+CREATE TABLE gold.fact_campaign_category_lift (
+    campaign_id                   SMALLINT          NOT NULL,
+    commodity_desc                VARCHAR(50)       NOT NULL,
+    coupons_distributed           INT               NOT NULL,
+    coupons_redeemed              INT               NOT NULL, 
+    actual_sales                  DECIMAL(12,2)     NOT NULL,
+    behavioral_baseline_sales     DECIMAL(12,2)     NOT NULL,
+    discount_spend                DECIMAL(12,2)     NOT NULL,
+    incremental_lift              DECIMAL(12,2)     NOT NULL,
+    PRIMARY KEY(campaign_id, commodity_desc)
+);
+
+IF OBJECT_ID ('gold.fact_store_promo_lift', 'U') IS NOT NULL
+	DROP TABLE gold.fact_store_promo_lift;
 GO
 
--- ======================================================================
--- Create Table: gold.fact_store_promotion;
--- ======================================================================;
-IF OBJECT_ID('gold.fact_store_promotion', 'V') IS NOT NULL
-	DROP VIEW gold.fact_store_promotion;
+CREATE TABLE gold.fact_store_promo_lift (
+    store_promo_lift_id BIGINT IDENTITY(1,1) PRIMARY KEY,
+    date_key                    INT             NOT NULL,                         
+    store_id                    INT             NOT NULL,                          
+    commodity_desc              VARCHAR(50)     NOT NULL,            
+    display_flag                CHAR(1)         NOT NULL,                  
+    mailer_flag                 CHAR(1)         NOT NULL,                   
+    is_unknown_mailer_flag      BIT             NOT NULL,
+    is_causal_tracked           BIT             NOT NULL,
+    promo_combination_type      VARCHAR(20)     NOT NULL,    
+    actual_sales                DECIMAL(18,2)   NOT NULL,            
+    units_sold                  INT             NOT NULL                         
+);
+
+IF OBJECT_ID ('gold.fact_household_segment_lift', 'U') IS NOT NULL
+	DROP TABLE gold.fact_household_segment_lift;
 GO
-CREATE OR ALTER VIEW gold.fact_store_promotion AS
-WITH week_lookup AS (
-    SELECT dunnhumby_week_no AS week_no,
-           MIN(calendar_date) AS week_start_date,
-           MAX(calendar_date) AS week_end_date
-    FROM gold.dim_date
-    GROUP BY dunnhumby_week_no
-)
-SELECT
-    cd.product_id,
-    cd.store_id,
-    cd.week_no,
-    wl.week_start_date,
-    wl.week_end_date,
-    cd.display AS display_code,
-    cd.mailer  AS mailer_code,
-    cd.is_unknown_mailer_code
-FROM silver.causal_data cd
-LEFT JOIN week_lookup wl 
-    ON wl.week_no = cd.week_no;
-GO
+
+CREATE TABLE gold.fact_household_segment_lift (
+    household_segment_lift_id   BIGINT IDENTITY(1,1) PRIMARY KEY,
+    household_key               INT             NOT NULL,                     
+    campaign_id                 SMALLINT        NOT NULL,                  
+    total_spend                 DECIMAL(18,2)   NOT NULL,             
+    behavioral_baseline_spend   DECIMAL(18,2)   NOT NULL,
+    total_discount_received     DECIMAL(18,2)   NOT NULL, 
+    incremental_lift            DECIMAL(18,2)   NOT NULL         
+);

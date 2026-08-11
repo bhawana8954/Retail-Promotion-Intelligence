@@ -3,20 +3,27 @@
 Stored Procedure: Load Silver Layer (Bronze -> Silver)
 ======================================================================================
 Script Purpose:
-	This stored procedure performs the ETL(Extract, Transform, Load) process to
-	populate the 'silver' schema tables from the 'bronze' schema.
+    This stored procedure performs the ETL (Extract, Transform, Load) process to
+    populate the 'silver' schema tables from the 'bronze' schema.
+
 Actions performed:
-	- Drops Non-Clustered Indexes to speed up bulk loading operations.
-	- Truncates Silver tables.
-	- Inserts transformed and cleaned data from Bronze into Silver tables.
-	- Re-creates/Rebuilds Indexes for downstream query performance.
+    - Drops selected non-clustered indexes before bulk loading to improve
+      insertion performance.
+    - Truncates Silver tables to perform a full refresh.
+    - Inserts transformed, standardized, and cleaned data from Bronze into Silver.
+    - Applies data type conversions, text cleansing, duplicate removal,
+      code-to-description mappings, and unknown-value handling where required.
+    - Inserts Unknown placeholder household records to maintain referential
+      completeness.
+    - Re-creates selected non-clustered indexes after loading for downstream
+      query performance.
 
 Parameters:
-	None.
-	This stored procedure does not accept any parameters or return any value.
+    None.
+    This stored procedure does not accept any parameters or return any value.
 
 Usage Example:
-	EXEC silver.load_silver;
+    EXEC silver.load_silver;
 ======================================================================================
 */
 
@@ -54,21 +61,17 @@ BEGIN
 		SET @start_time = GETDATE();
 		PRINT '>> Truncating Table: silver.campaign_desc';
 		TRUNCATE TABLE silver.campaign_desc;
-	
 		PRINT '>> Inserting Data into: silver.campaign_desc';
-		INSERT INTO silver.campaign_desc WITH (TABLOCK) (
-			description,
-			campaign,
-			start_day,
-			end_day
-		)
+		
+		INSERT INTO silver.campaign_desc WITH (TABLOCK) (description, campaign, start_day, end_day)
 		SELECT 
 			TRIM(description) AS description,
 			TRY_CAST(campaign AS SMALLINT) AS campaign,
 			TRY_CAST(start_day AS SMALLINT) AS start_day,
 			TRY_CAST(end_day AS SMALLINT) AS end_day
 		FROM bronze.campaign_desc
-		WHERE TRY_CAST(campaign AS SMALLINT) IS NOT NULL
+		WHERE TRY_CAST(campaign AS SMALLINT) IS NOT NULL AND
+			  NULLIF(TRIM(description), '') IS NOT NULL
 		GROUP BY TRIM(description), TRY_CAST(campaign AS SMALLINT), TRY_CAST(start_day AS SMALLINT), TRY_CAST(end_day AS SMALLINT);
 
 		SET @end_time = GETDATE();
@@ -81,13 +84,9 @@ BEGIN
 		SET @start_time = GETDATE();
 		PRINT '>> Truncating Table: silver.campaign_table';
 		TRUNCATE TABLE silver.campaign_table;
-
 		PRINT '>> Inserting Data into: silver.campaign_table';
-		INSERT INTO silver.campaign_table WITH (TABLOCK) (
-			description,
-			household_key,
-			campaign
-		)
+		
+		INSERT INTO silver.campaign_table WITH (TABLOCK) (description, household_key, campaign)
 		SELECT 
 			TRIM(description) AS description,
 			TRY_CAST(household_key AS INT) AS household_key,
@@ -107,7 +106,6 @@ BEGIN
 		SET @start_time = GETDATE();
 		PRINT '>> Truncating Table: silver.causal_data';
 		TRUNCATE TABLE silver.causal_data;
-
 		PRINT '>> Inserting Data into: silver.causal_data';
 		
 		;WITH CastedCausal AS (
@@ -115,34 +113,72 @@ BEGIN
 				TRY_CAST(product_id AS INT) AS product_id,
 				TRY_CAST(store_id AS INT) AS store_id,
 				TRY_CAST(week_no AS SMALLINT) AS week_no,
-				CASE WHEN TRIM(display) <> '0' THEN TRIM(display) END AS display,
-				CASE WHEN TRIM(mailer) <> '0' THEN TRIM(mailer) END AS mailer
+				TRIM(display) AS display_code,
+				TRIM(mailer) AS mailer_code
 			FROM bronze.causal_data
-		)
-		INSERT INTO silver.causal_data WITH (TABLOCK) (
+		),
+		MappedCausal AS (
+			SELECT 
+				product_id,
+				store_id,
+				week_no,
+				CASE display_code
+					WHEN '0' THEN 'Not on Display'
+					WHEN '1' THEN 'Store Front'
+					WHEN '2' THEN 'Store Rear'
+					WHEN '3' THEN 'Front End Cap'
+					WHEN '4' THEN 'Mid-Aisle End Cap'
+					WHEN '5' THEN 'Rear End Cap'
+					WHEN '6' THEN 'Side-Aisle End Cap'
+					WHEN '7' THEN 'In-Aisle'
+					WHEN '9' THEN 'Secondary Location Display'
+					WHEN 'A' THEN 'In-Shelf'
+					ELSE 'Unknown'
+				END AS display,
+				CASE mailer_code
+					WHEN '0' THEN 'Not on ad'
+					WHEN 'A' THEN 'Interior page feature'
+					WHEN 'C' THEN 'Interior page line item'
+					WHEN 'D' THEN 'Front page feature'
+					WHEN 'F' THEN 'Back page feature'
+					WHEN 'H' THEN 'Wrap front feature'
+					WHEN 'J' THEN 'Wrap interior coupon'
+					WHEN 'L' THEN 'Wrap back feature'
+					WHEN 'P' THEN 'Interior page coupon'
+					WHEN 'X' THEN 'Free on interior page'
+					WHEN 'Z' THEN 'Free on front page, back page or wrap'
+					ELSE 'Unknown'
+				END AS mailer,
+				CASE
+					WHEN display_code IS NULL
+					  OR display_code = ''
+					  OR display_code NOT IN ('0','1','2','3','4','5','6','7','9','A')
+					THEN 1
+					ELSE 0
+				END AS is_unknown_display_code,
+				CASE
+					WHEN mailer_code IS NULL
+					  OR mailer_code = ''
+					  OR mailer_code NOT IN ('0','A','C','D','F','H','J','L','P','X','Z')
+					THEN 1
+					ELSE 0
+				END AS is_unknown_mailer_code
+			FROM CastedCausal
+			)
+		INSERT INTO silver.causal_data WITH (TABLOCK) (product_id, store_id, week_no, display, mailer, is_unknown_display_code,
+													   is_unknown_mailer_code)
+		SELECT
 			product_id,
 			store_id,
 			week_no,
 			display,
 			mailer,
 			is_unknown_display_code,
-			is_unknown_mailer_code,
-			is_ambiguous_promotion
-		)
-		SELECT
-			product_id,
-			store_id,
-			week_no,
-			ISNULL(MAX(display), '0') AS display,
-			ISNULL(MAX(mailer), '0') AS mailer,
-			CASE WHEN MAX(display) IS NULL THEN 1 ELSE 0 END AS is_unknown_display_code,
-			CASE WHEN MAX(mailer) IS NULL THEN 1 ELSE 0 END AS is_unknown_mailer_code,
-			CASE WHEN COUNT(DISTINCT display) > 1 OR COUNT(DISTINCT mailer) > 1 THEN 1 ELSE 0 END AS is_ambiguous_promotion
-		FROM CastedCausal
+			is_unknown_mailer_code
+		FROM MappedCausal
 		WHERE product_id IS NOT NULL 
 		  AND store_id IS NOT NULL 
 		  AND week_no IS NOT NULL
-		GROUP BY product_id, store_id, week_no;
 
 		SET @end_time = GETDATE();
 		PRINT '>> Load Duration: ' + CAST(DATEDIFF(second, @start_time, @end_time) AS NVARCHAR) + ' seconds';
@@ -154,20 +190,17 @@ BEGIN
 		SET @start_time = GETDATE();
 		PRINT '>> Truncating Table: silver.coupon';
 		TRUNCATE TABLE silver.coupon;
-
 		PRINT '>> Inserting Data into: silver.coupon';
-		INSERT INTO silver.coupon WITH (TABLOCK) (
-			coupon_upc,
-			product_id,
-			campaign
-		)
+		
+		INSERT INTO silver.coupon WITH (TABLOCK) (coupon_upc, product_id, campaign)
 		SELECT 
 			TRIM(coupon_upc) AS coupon_upc,
 			TRY_CAST(product_id AS INT) AS product_id,
 			TRY_CAST(campaign AS SMALLINT) AS campaign
 		FROM bronze.coupon
-		WHERE TRY_CAST(product_id AS INT) IS NOT NULL 
-		  AND TRY_CAST(campaign AS SMALLINT) IS NOT NULL
+		WHERE NULLIF(TRIM(coupon_upc), '') IS NOT NULL AND 
+			  TRY_CAST(product_id AS INT) IS NOT NULL AND 
+			  TRY_CAST(campaign AS SMALLINT) IS NOT NULL
 		GROUP BY TRIM(coupon_upc), TRY_CAST(product_id AS INT), TRY_CAST(campaign AS SMALLINT);
 
 		SET @end_time = GETDATE();
@@ -180,23 +213,19 @@ BEGIN
 		SET @start_time = GETDATE();
 		PRINT '>> Truncating Table: silver.coupon_redempt';
 		TRUNCATE TABLE silver.coupon_redempt;
-
 		PRINT '>> Inserting Data into: silver.coupon_redempt';
-		INSERT INTO silver.coupon_redempt WITH (TABLOCK) (
-			household_key,
-			day,
-			coupon_upc,
-			campaign
-		)
+		
+		INSERT INTO silver.coupon_redempt WITH (TABLOCK) (household_key, day, coupon_upc, campaign)
 		SELECT 
 			TRY_CAST(household_key AS INT) AS household_key,
 			TRY_CAST(day AS SMALLINT) AS day,
 			TRIM(coupon_upc) AS coupon_upc,
 			TRY_CAST(campaign AS SMALLINT) AS campaign
 		FROM bronze.coupon_redempt
-		WHERE TRY_CAST(household_key AS INT) IS NOT NULL 
-		  AND TRY_CAST(day AS SMALLINT) IS NOT NULL 
-		  AND TRY_CAST(campaign AS SMALLINT) IS NOT NULL
+		WHERE NULLIF(TRIM(coupon_upc), '') IS NOT NULL AND 
+			  TRY_CAST(household_key AS INT) IS NOT NULL AND 
+			  TRY_CAST(day AS SMALLINT) IS NOT NULL AND 
+			  TRY_CAST(campaign AS SMALLINT) IS NOT NULL
 		GROUP BY TRY_CAST(household_key AS INT), TRY_CAST(day AS SMALLINT), TRIM(coupon_upc), TRY_CAST(campaign AS SMALLINT);
 
 		SET @end_time = GETDATE();
@@ -209,18 +238,10 @@ BEGIN
 		SET @start_time = GETDATE();
 		PRINT '>> Truncating Table: silver.hh_demographic';
 		TRUNCATE TABLE silver.hh_demographic;
-
 		PRINT '>> Inserting Data into: silver.hh_demographic';
-		INSERT INTO silver.hh_demographic WITH (TABLOCK) (
-			age_group,
-			marital_status_group,
-			income_level,
-			homeownership_status,
-			household_composition,
-			household_size,
-			kid_category,
-			household_key
-		)
+		
+		INSERT INTO silver.hh_demographic WITH (TABLOCK) (age_group, marital_status_group, income_level, homeownership_status,
+														  household_composition, household_size, kid_category, household_key)
 		SELECT 
 			TRIM(age_group) AS age_group,
 			TRIM(marital_status_group) AS marital_status_group,
@@ -229,12 +250,12 @@ BEGIN
 			TRIM(household_composition) AS household_composition,
 			TRIM(household_size) AS household_size,
 			TRIM(kid_category) AS kid_category,
-			household_key
+			TRY_CAST(household_key AS INT) AS household_key
 		FROM bronze.hh_demographic
 		GROUP BY 
 			TRIM(age_group), TRIM(marital_status_group), TRIM(income_level), 
 			TRIM(homeownership_status), TRIM(household_composition), 
-			TRIM(household_size), TRIM(kid_category), household_key;
+			TRIM(household_size), TRIM(kid_category), TRY_CAST(household_key AS INT);
 
 		SET @end_time = GETDATE();
 		PRINT '>> Load Duration: ' + CAST(DATEDIFF(second, @start_time, @end_time) AS NVARCHAR) + ' seconds';
@@ -246,18 +267,10 @@ BEGIN
 		SET @start_time = GETDATE();
 		PRINT '>> Truncating Table: silver.product';
 		TRUNCATE TABLE silver.product;
-
 		PRINT '>> Inserting Data into: silver.product';
-		INSERT INTO silver.product WITH (TABLOCK) (
-			product_id,
-			manufacturer,
-			department,
-			brand,
-			commodity_desc,
-			sub_commodity_desc,
-			is_unknown_product,
-			curr_size_of_product
-		)
+		
+		INSERT INTO silver.product WITH (TABLOCK) (product_id, manufacturer, department, brand, commodity_desc, sub_commodity_desc,
+												   is_unknown_product, curr_size_of_product)
 		SELECT 
 			TRY_CAST(product_id AS INT) AS product_id,
 			TRY_CAST(manufacturer AS INT) AS manufacturer,
@@ -265,11 +278,13 @@ BEGIN
 			TRIM(brand) AS brand,
 			TRIM(commodity_desc) AS commodity_desc,
 			TRIM(sub_commodity_desc) AS sub_commodity_desc,
-			CASE WHEN TRIM(commodity_desc) IN ('UNKNOWN', '', ' ') OR TRIM(commodity_desc) IS NULL THEN 1 ELSE 0 END AS is_unknown_product,
+			CASE WHEN NULLIF(TRIM(commodity_desc), '') IS NULL OR UPPER(TRIM(commodity_desc)) = 'UNKNOWN' THEN 1
+				 ELSE 0
+			END AS is_unknown_product,
 			TRIM(curr_size_of_product) AS curr_size_of_product
 		FROM bronze.product
-		WHERE TRY_CAST(product_id AS INT) IS NOT NULL 
-		  AND TRY_CAST(manufacturer AS INT) IS NOT NULL
+		WHERE TRY_CAST(product_id AS INT) IS NOT NULL AND 
+			  TRY_CAST(manufacturer AS INT) IS NOT NULL
 		GROUP BY 
 			TRY_CAST(product_id AS INT), TRY_CAST(manufacturer AS INT), TRIM(department), TRIM(brand), 
 			TRIM(commodity_desc), TRIM(sub_commodity_desc), TRIM(curr_size_of_product);
@@ -368,7 +383,7 @@ BEGIN
 		-- INDEX MANAGEMENT: POST-LOAD (RECREATE NON-CLUSTERED INDEXES)
 		-- ===================================================================
 		SET @start_time = GETDATE();
-		PRINT '>> Rebuilding Non-Clustered Indexes for Downstream Performance...';
+		PRINT '>> Re-creates selected non-clustered indexes for downstream query performance.';
 
 		CREATE NONCLUSTERED INDEX IX_silver_hh_demographic_key 
 		ON silver.hh_demographic (household_key);

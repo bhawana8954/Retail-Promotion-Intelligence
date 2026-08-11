@@ -42,11 +42,10 @@ CREATE TABLE silver.causal_data (
     product_id              INT,
     store_id                INT,
     week_no                 SMALLINT,
-    display                 CHAR(1),
-    mailer                  CHAR(1),
+    display                 VARCHAR(50),
+    mailer                  VARCHAR(50),
     is_unknown_mailer_code  BIT NOT NULL DEFAULT 0,
     is_unknown_display_code BIT NOT NULL DEFAULT 0,
-    is_ambiguous_promotion  BIT NOT NULL DEFAULT 0,
     dwh_create_date        DATETIME2 DEFAULT GETDATE()
 );
 GO
@@ -104,7 +103,7 @@ CREATE TABLE silver.product (
     brand                   VARCHAR(20),
     commodity_desc          NVARCHAR(100),
     sub_commodity_desc      NVARCHAR(100),
-    is_unknown_product      BIT,
+    is_unknown_product      BIT NOT NULL DEFAULT 0,
     curr_size_of_product    NVARCHAR(50),
     dwh_create_date         DATETIME2 DEFAULT GETDATE()
 );
