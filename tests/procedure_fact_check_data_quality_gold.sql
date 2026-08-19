@@ -434,6 +434,99 @@ BEGIN
 		PRINT '>> -------------';
 
 		-- ---------------------------------------------------------------
+		-- Checking Table 4: gold.fact_campaign_lift
+		-- ---------------------------------------------------------------
+		SET @start_time = GETDATE();
+		PRINT '>> Checking Table: gold.fact_campaign_lift';
+
+		-- Check 1: Household referential integrity
+		SET @check_count = @check_count + 1;
+		IF EXISTS (SELECT 1
+				   FROM gold.fact_campaign_lift AS f
+				   WHERE NOT EXISTS (SELECT 1 FROM gold.dim_household AS h WHERE f.household_key = h.household_key)
+				  )
+		BEGIN
+			SET @fail_count = @fail_count + 1;
+			PRINT 'FAIL: household_key values missing from gold.dim_household';
+		END
+		ELSE
+			PRINT 'PASS: household_key - referential integrity OK';
+
+		-- Check 2: Grain / duplicate validation
+		SET @check_count = @check_count + 1;
+		IF EXISTS (SELECT household_key, category
+				   FROM gold.fact_campaign_lift
+				   GROUP BY household_key, category HAVING COUNT(*) > 1
+				  )
+		BEGIN
+			SET @fail_count = @fail_count + 1;
+			PRINT 'FAIL: duplicate household_key + category combinations found';
+		END
+		ELSE
+			PRINT 'PASS: household_key + category grain is unique';
+
+		-- Check 3: is_reliable_pair business-rule validation (>= 5 active days on BOTH sides)
+		SET @check_count = @check_count + 1;
+		IF EXISTS (SELECT 1
+				   FROM gold.fact_campaign_lift
+				   WHERE is_reliable_pair <> CASE WHEN baseline_days >= 5 AND campaign_days >= 5 THEN 1 ELSE 0 END
+				  )
+		BEGIN
+			SET @fail_count = @fail_count + 1;
+			PRINT 'FAIL: is_reliable_pair does not match baseline_days>=5 AND campaign_days>=5 rule';
+		END
+		ELSE
+			PRINT 'PASS: is_reliable_pair correctly reflects the >=5/>=5 threshold';
+
+		-- Check 4: Spend-per-day and lift formula validation
+		SET @check_count = @check_count + 1;
+		IF EXISTS (SELECT 1
+				   FROM gold.fact_campaign_lift
+				   WHERE ABS(baseline_spend_per_day - ISNULL(CAST(baseline_spend / NULLIF(baseline_days, 0) AS DECIMAL(10,2)), 0.00)) > 0.01
+						 OR ABS(campaign_spend_per_day - ISNULL(CAST(campaign_spend / NULLIF(campaign_days, 0) AS DECIMAL(10,2)), 0.00)) > 0.01
+						 OR ABS(lift_per_day - (campaign_spend_per_day - baseline_spend_per_day)) > 0.01
+				  )
+		BEGIN
+			SET @fail_count = @fail_count + 1;
+			PRINT 'FAIL: baseline/campaign spend-per-day or lift_per_day formula is inconsistent';
+		END
+		ELSE
+			PRINT 'PASS: spend-per-day and lift_per_day formulas are valid';
+
+		-- Check 5: Non-negative spend / days validation
+		SET @check_count = @check_count + 1;
+		IF EXISTS (SELECT 1
+				   FROM gold.fact_campaign_lift
+				   WHERE baseline_spend < 0 OR campaign_spend < 0 OR baseline_days < 0 OR campaign_days < 0
+				  )
+		BEGIN
+			SET @fail_count = @fail_count + 1;
+			PRINT 'FAIL: negative spend or day-count values found';
+		END
+		ELSE
+			PRINT 'PASS: spend and day-count values are non-negative';
+
+		-- Check 6: Mandatory NULL check
+		SET @check_count = @check_count + 1;
+		IF EXISTS (SELECT 1
+				   FROM gold.fact_campaign_lift
+				   WHERE household_key IS NULL OR category IS NULL OR baseline_spend IS NULL OR baseline_days IS NULL
+						 OR campaign_spend IS NULL OR campaign_days IS NULL OR baseline_spend_per_day IS NULL
+						 OR campaign_spend_per_day IS NULL OR lift_per_day IS NULL OR is_catchall_category IS NULL
+						 OR is_reliable_pair IS NULL
+				  )
+		BEGIN
+			SET @fail_count = @fail_count + 1;
+			PRINT 'FAIL: NULL values found in mandatory fact_campaign_lift columns';
+		END
+		ELSE
+			PRINT 'PASS: no NULL values found in mandatory fact_campaign_lift columns';
+
+		SET @end_time = GETDATE();
+		PRINT '>> Check Duration: ' + CAST(DATEDIFF(second, @start_time, @end_time) AS NVARCHAR) + ' seconds';
+		PRINT '>> ----------';
+
+		-- ---------------------------------------------------------------
 		-- Checking Table 5: gold.fact_campaign_category_lift
 		-- ---------------------------------------------------------------
 		SET @start_time = GETDATE();
@@ -723,7 +816,7 @@ BEGIN
 		FROM (SELECT DISTINCT household_key, campaign_id
 			  FROM gold.fact_household_segment_lift) AS f
 		INNER JOIN gold.dim_campaign AS c ON f.campaign_id = c.campaign_id
-		INNER JOIN silver.transaction_data AS t ON f.household_key = t.household_key AND t.day BETWEEN c.start_day AND c.end_day
+		LEFT JOIN silver.transaction_data AS t ON f.household_key = t.household_key AND t.day BETWEEN c.start_day AND c.end_day
 		GROUP BY f.household_key, f.campaign_id;
 
 		CREATE CLUSTERED INDEX CIX_expected_hh_disc ON #expected_household_discounts(household_key, campaign_id);
@@ -770,7 +863,78 @@ BEGIN
 		ELSE
 			PRINT 'PASS: spend and discount values are non-negative';
 
-		-- Check 7: Mandatory NULL check
+		-- Check 7: Behavioral baseline & total spend validation
+		;WITH ActiveCampaignDays AS (
+			SELECT DISTINCT d.day_no AS day_number
+			FROM gold.dim_date AS d
+			INNER JOIN silver.campaign_desc AS cd ON d.day_no BETWEEN cd.start_day AND cd.end_day
+			),
+		NonCampaignDayCount AS (
+			SELECT COUNT(DISTINCT d.day_no) AS total_non_campaign_days
+			FROM gold.dim_date AS d
+			LEFT JOIN ActiveCampaignDays AS acd ON d.day_no = acd.day_number
+			WHERE acd.day_number IS NULL
+			),
+		HouseholdDailyBaselines AS (
+			SELECT t.household_key,
+				   SUM(t.sales_value) / NULLIF((SELECT total_non_campaign_days FROM NonCampaignDayCount), 0) AS baseline_daily_rate
+			FROM silver.transaction_data AS t
+			LEFT JOIN ActiveCampaignDays AS acd ON t.day = acd.day_number
+			WHERE acd.day_number IS NULL
+			GROUP BY t.household_key
+			),
+		TargetedHouseholds AS (
+			SELECT DISTINCT campaign AS campaign_id, 
+						    household_key
+			FROM silver.campaign_table
+			WHERE household_key IS NOT NULL AND campaign IS NOT NULL
+			)
+		SELECT th.household_key,
+			   th.campaign_id,
+			   ISNULL(SUM(t.sales_value), 0.00) AS expected_total_spend,
+			   (cd.end_day - cd.start_day + 1) * MAX(ISNULL(hdb.baseline_daily_rate, 0.00)) AS expected_baseline_spend
+		INTO #expected_segment_performance
+		FROM TargetedHouseholds AS th
+		INNER JOIN silver.campaign_desc AS cd ON th.campaign_id = cd.campaign
+		LEFT JOIN silver.transaction_data AS t ON t.household_key = th.household_key AND t.day BETWEEN cd.start_day AND cd.end_day
+		LEFT JOIN HouseholdDailyBaselines AS hdb ON t.household_key = hdb.household_key
+		GROUP BY th.household_key, th.campaign_id, cd.start_day, cd.end_day;
+
+		CREATE CLUSTERED INDEX CIX_expected_segment_perf ON #expected_segment_performance(household_key, campaign_id);
+
+		SET @check_count = @check_count + 1;
+		IF EXISTS (SELECT 1
+				   FROM gold.fact_household_segment_lift AS f
+				   INNER JOIN #expected_segment_performance AS e ON f.household_key = e.household_key AND f.campaign_id = e.campaign_id
+				   WHERE ABS(f.total_spend - e.expected_total_spend) > 0.01 OR ABS(f.behavioral_baseline_spend - e.expected_baseline_spend) > 0.01
+				  )
+		BEGIN
+			SET @fail_count = @fail_count + 1;
+			PRINT 'FAIL: total_spend or behavioral_baseline_spend mismatch vs recomputed source values';
+		END
+		ELSE
+			PRINT 'PASS: total_spend and behavioral_baseline_spend match recomputed source values';
+
+		-- Check 8: Targeting scope validation
+		SET @check_count = @check_count + 1;
+		IF EXISTS (SELECT household_key, campaign_id FROM gold.fact_household_segment_lift
+				   EXCEPT
+				   SELECT household_key, campaign_id FROM #expected_segment_performance
+				  )
+		OR EXISTS (SELECT household_key, campaign_id FROM #expected_segment_performance
+				   EXCEPT
+				   SELECT household_key, campaign_id FROM gold.fact_household_segment_lift
+				  )
+		BEGIN
+			SET @fail_count = @fail_count + 1;
+			PRINT 'FAIL: fact_household_segment_lift household+campaign pairs do not match silver.campaign_table targeting exactly';
+		END
+		ELSE
+			PRINT 'PASS: fact_household_segment_lift grain matches targeted household+campaign pairs exactly';
+
+		DROP TABLE #expected_segment_performance;
+
+		-- Check 9: Mandatory NULL check
 		SET @check_count = @check_count + 1;
 		IF EXISTS (SELECT 1
 				   FROM gold.fact_household_segment_lift

@@ -441,8 +441,8 @@ AS BEGIN
 				-- Daily Incremental Lift
 				CAST(ISNULL(campaign_spend / NULLIF(campaign_days, 0),0.00) - ISNULL(baseline_spend / NULLIF(baseline_days, 0),0.00) AS DECIMAL(10,2)) AS lift_per_day,
 				is_catchall_category,
-				-- Noise filter flag (>= 3 active baseline days)
-				CASE WHEN baseline_days >= 3 THEN 1 
+				-- Noise filter flag (>= 5 active baseline days)
+				CASE WHEN baseline_days >= 5 AND campaign_days >= 5 THEN 1 
 					 ELSE 0 
 				END AS is_reliable_pair
 			FROM HouseholdCategoryAggs;
@@ -570,7 +570,7 @@ AS BEGIN
 				SUM(tbs.baseline_sales / NULLIF(tbs.baseline_days, 0) * c.duration_days) AS behavioral_baseline_sales
 			FROM TargetedBaselineSales AS tbs
 			INNER JOIN Campaigns AS c ON tbs.campaign_id = c.campaign_id
-			WHERE tbs.baseline_days > 0
+			WHERE tbs.baseline_days >= 5
 			GROUP BY tbs.campaign_id, tbs.commodity_desc
 		),
 		-- Campaign discount investment sums the absolute values of retail, coupon, and coupon-match discounts to convert 
@@ -712,11 +712,17 @@ AS BEGIN
 				FROM gold.dim_date AS d
 				INNER JOIN silver.campaign_desc AS cd ON d.day_no BETWEEN cd.start_day AND cd.end_day
 			),
+			NonCampaignDayCount AS ( 
+				SELECT COUNT(DISTINCT d.day_no) AS total_non_campaign_days 
+				FROM gold.dim_date AS d 
+				LEFT JOIN ActiveCampaignDays AS acd ON d.day_no = acd.day_number 
+				WHERE acd.day_number IS NULL 
+			),
 			-- 2. Calculate baseline daily spend rate per household from non-campaign days
 			HouseholdDailyBaselines AS (
 				SELECT 
 					t.household_key,
-					SUM(t.sales_value) / NULLIF(COUNT(DISTINCT t.day), 0) AS baseline_daily_rate
+					SUM(t.sales_value) / NULLIF((SELECT total_non_campaign_days FROM NonCampaignDayCount), 0) AS baseline_daily_rate
 				FROM silver.transaction_data AS t
 				LEFT JOIN ActiveCampaignDays AS acd ON t.day = acd.day_number
 				WHERE acd.day_number IS NULL
@@ -734,13 +740,13 @@ AS BEGIN
 				SELECT 
 					th.household_key,
 					th.campaign_id,
-					SUM(t.sales_value) AS total_spend,
-					SUM(ABS(ISNULL(t.retail_disc,0)) + ABS(ISNULL(t.coupon_disc,0)) + ABS(ISNULL(t.coupon_match_disc,0))) AS total_discount_received,
+					ISNULL(SUM(t.sales_value),0.00) AS total_spend,
+					ISNULL(SUM(ABS(ISNULL(t.retail_disc,0)) + ABS(ISNULL(t.coupon_disc,0)) + ABS(ISNULL(t.coupon_match_disc,0))),0.00) AS total_discount_received,
 					-- Expected baseline spend = household baseline daily rate multiplied by the full campaign duration.
 					(cd.end_day - cd.start_day + 1) * MAX(ISNULL(hdb.baseline_daily_rate, 0.00)) AS behavioral_baseline_spend
 				FROM TargetedHouseholds AS th
 				INNER JOIN silver.campaign_desc AS cd ON th.campaign_id = cd.campaign
-				INNER JOIN silver.transaction_data AS t ON t.household_key = th.household_key AND t.day BETWEEN cd.start_day AND cd.end_day
+				LEFT JOIN silver.transaction_data AS t ON t.household_key = th.household_key AND t.day BETWEEN cd.start_day AND cd.end_day
 				LEFT JOIN HouseholdDailyBaselines AS hdb ON t.household_key = hdb.household_key
 				GROUP BY th.household_key, th.campaign_id, cd.start_day, cd.end_day
 			)
