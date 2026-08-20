@@ -27,8 +27,8 @@
 |
 ├── powerbi/          # Power BI dashboard and report documentation
 |   |
-|   ├── Readme.md                                       # Dashboard pages, navigation, features, and key findings
-|   └── retail_promotion_intelligence_dashboard.pdf     # Exported Power BI dashboard
+|   ├── Readme.md                                           # Dashboard pages, navigation, features, and key findings
+|   └── retail_promotion_intelligence_poerbi_dashboard.pdf  # Exported Power BI dashboard
 |
 |
 ├── python/           # Python-based analytical prototyping

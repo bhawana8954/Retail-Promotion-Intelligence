@@ -74,7 +74,7 @@ For a detailed explanation of each folder and file, including their purpose and 
 
 ## 📊 Key Insights
 
-Full detail, visuals, and interpretation notes: [`powerbi/Readme.md`](./powerbi/Readme.md) · [Dashboard PDF](./powerbi/retail_promotion_intelligence_dashboard.pdf)
+Full detail, visuals, and interpretation notes: [`powerbi/Readme.md`](./powerbi/Readme.md) · [Dashboard PDF](./powerbi/retail_promotion_intelligence_powerbi_dashboard.pdf)
 
 | Page | Headline Finding |
 |---|---|

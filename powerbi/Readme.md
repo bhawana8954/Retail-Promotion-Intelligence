@@ -10,7 +10,7 @@ For full metric definitions, formulas, and analytical conventions (grain, campai
 
 ## 📊 Dashboard Access
 
-**[View / Download the Power BI Dashboard PDF](./powerbi/retail_promotion_intelligence_dashboard.pdf)** — static snapshot of all four pages, including slicer, switch, and dynamic-filter views.
+[**View / Download the Power BI Dashboard PDF**](../powerbi/retail_promotion_intelligence_powerbi_dashboard.pdf) — static snapshot of all four pages, including slicer, switch, and dynamic-filter views.
 
 **[Download the Interactive Power BI Report](https://drive.google.com/file/d/1Qvlgy6Uo_5WMT5aKVxIf2rcllkgEJyHk/view?usp=sharing)** — hosted externally, since the `.pbix` exceeds GitHub's file-size limit. Open in Microsoft Power BI Desktop.
 
