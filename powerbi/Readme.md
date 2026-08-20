@@ -4,7 +4,7 @@
 
 The Power BI report is the final analytical and visualization layer of the **Retail Promotion Intelligence** project. It transforms the curated Gold-layer data into an interactive four-page dashboard covering executive performance, campaign effectiveness, promotion mechanics, and household-segment response — moving from **business-level performance → campaign performance → promotion effectiveness → customer/household response**.
 
-For full metric definitions, formulas, and analytical conventions (grain, campaign overlap, reliability thresholds, etc.), see [`docs/gold_layer_business_logic_and_terminology.md`](../docs/gold_layer_business_logic_and_terminology.md).
+For full metric definitions, formulas, and analytical conventions (grain, campaign overlap, reliability thresholds, etc.), see [`docs/gold_layer_business_logic_and_terminology.md`](../docs/business_logic_and_terminology.md).
 
 ---
 
