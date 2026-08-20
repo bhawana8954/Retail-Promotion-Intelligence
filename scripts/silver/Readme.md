@@ -58,10 +58,14 @@ Raw CSV files downloaded and stored in a accessible local or network directory.
 **Step 1: Create Tables (DDL)**
 Ensure Bronze tables are populated before running the Silver transformations.<br>
 **SQL**<br>
--- Run in your SQL client
 EXEC 1_DDL_Silver.sql;
 
 **Step 2: Execute Data Load**
 Execute the stored procedure to run the full ETL transformation from Bronze to Silver:<br>
 **SQL**<br>
-EXEC silver.load_silver
+EXEC silver.load_silver;
+
+**Step 3: Create Indexes**
+Run the indexing script post-load to accelerate BI query performance across primary and foreign keys:<br>
+**SQL**<br>
+EXEC 3_Index_Gold.sql;
