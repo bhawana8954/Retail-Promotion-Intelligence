@@ -3,7 +3,7 @@
 
 This document provides a consolidated reference for the **core business logic, analytical conventions, Power BI/DAX terminology, and key metric definitions** used in the Retail Promotion & Customer Loyalty Intelligence Platform.
 
-For Gold-layer table definitions and schema, see the [Gold Layer](./scripts/gold/).
+For Gold-layer table definitions and schema, see the [Gold Layer](../scripts/gold/).
 
 It is intended to serve as the single source of truth for the business logic and calculations behind the Gold layer and the finished four-page Power BI report.
 

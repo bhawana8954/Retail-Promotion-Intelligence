@@ -16,9 +16,11 @@ The Gold Layer represents the business and consumption layer within the Medallio
 
 - **Execution Logging & Error Resilience:** Monitors step-by-step table load durations and logs execution status via SQL console output with `TRY...CATCH` exception handling.
 
+For full definitions and formulas behind these concepts, see the [Business Logic & Terminology Reference](../../docs/business_logic_and_terminology.md).
+
 ## Directory Structure:
 
-bronze/
+gold/
 ```
 ├── 1_DDL Gold.sql                # DDL script defining Gold dimension & fact schemas, primary keys, and types
 ├── 2_Procedure Load Gold.sql     # Stored procedure (gold.load_gold) executing end-to-end Silver ➔ Gold ETL logic
@@ -27,7 +29,7 @@ bronze/
 ```
 
 ## Transformed Tables:
-The schema defines 6 dimension tables and 6 analytical fact tables optimized for business reporting:
+The schema defines 6 dimension tables and 7 analytical fact tables optimized for business reporting:
 
 ### Dimension tables:
 
@@ -67,7 +69,6 @@ Key business and data processing highlights applied during the Silver ➔ Gold t
 - **Zero-Division & NULL Safety:** Safeguarded all daily spend and lift calculations with `NULLIF()` and `ISNULL()` wrappers.
 
 ## Execution Guide:
-Raw CSV files downloaded and stored in a accessible local or network directory.
 
 **Step 1: Create Tables (DDL)**
 Ensure Silver schema tables are loaded and accessible before executing Gold DDL:<br>
