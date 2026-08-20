@@ -26,7 +26,6 @@ The focus is on identifying which promotions, campaigns, stores, and customer se
 
 ## 📑 Table of Contents
 
-- [Overview](#-overview)
 - [Architecture](#️-architecture)
 - [Tech Stack](#️-tech-stack)
 - [Repository Structure](#-repository-structure)
@@ -165,6 +164,6 @@ This project was developed as a portfolio project to demonstrate an end-to-end a
 
 ### 🔗 Connect
 
-- 💼 [LinkedIn](www.linkedin.com/in/bhawanabhatt21)
+- 💼 [LinkedIn](https://www.linkedin.com/in/bhawanabhatt21)
 - 💻 [GitHub](https://github.com/bhawana8954)
 - 📊 [Project Repository](https://github.com/bhawana8954/Retail-Promotion-Intelligence)
