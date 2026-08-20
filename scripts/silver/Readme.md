@@ -1,5 +1,5 @@
 # Silver Layer Documentation
-This directory contains the SQL scripts required to clean, transform, and standardize data from the Bronze Layer into the Silver Layer for the Retail Promotion Intelligence project (based on the Dunnhumby - The Complete Journey dataset).
+This directory contains the SQL scripts required to clean, transform, and standardize data from the Bronze Layer into the Silver Layer for the Retail Promotion Intelligence project (based on the dunnhumby - The Complete Journey dataset).
 
 ## Overview:
 The Silver Layer acts as the cleansed, validated, and enterprise-ready data repository within the Medallion Architecture (Bronze ➔ Silver ➔ Gold).
@@ -18,10 +18,11 @@ The Silver Layer acts as the cleansed, validated, and enterprise-ready data repo
 
 ## Directory Structure:
 
-bronze/
+silver/
 ```
-├── 1_DDL Silver.sql                # DDL script to define cleansed silver tables, primary keys, and schema
-├── 2_Procedure Load Silver.sql     # Stored procedure (silver.load_silver) for ETL transformation and load
+├── 1_DDL_silver.sql                # DDL script to define cleansed silver tables, primary keys, and schema
+├── 2_procedure_load_silver.sql     # Stored procedure (silver.load_silver) for ETL transformation and load
+├── 3_index_silver.sql              # Post-load indexing script to optimize query performance across Silver tables
 └── Readme.md                       # Documentation for the silver folder
 ```
 
@@ -58,14 +59,19 @@ Raw CSV files downloaded and stored in a accessible local or network directory.
 **Step 1: Create Tables (DDL)**
 Ensure Bronze tables are populated before running the Silver transformations.<br>
 **SQL**<br>
-EXEC 1_DDL_Silver.sql;
+EXEC 1_DDL_silver.sql;
 
-**Step 2: Execute Data Load**
-Execute the stored procedure to run the full ETL transformation from Bronze to Silver:<br>
+**Step 2: Create/Deploy the Silver Load Procedure**
+Execute the SQL script containing the silver.load_silver stored procedure. This creates or updates the procedure in the database.<br>
+**SQL**<br>
+EXEC 2_procedure_load_silver;
+
+**Step 3: Execute Data Load**
+Execute the stored procedure to run the full ETL transformation from Bronze to Silver.<br>
 **SQL**<br>
 EXEC silver.load_silver;
 
-**Step 3: Create Indexes**
-Run the indexing script post-load to accelerate BI query performance across primary and foreign keys:<br>
+**Step 4: Create Indexes**
+Run the Silver indexing script after the data load to improve query performance and optimize data access across key Silver tables.<br>
 **SQL**<br>
-EXEC 3_Index_Gold.sql;
+EXEC 3_index_silver.sql;

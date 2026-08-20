@@ -1,5 +1,5 @@
 # Gold Layer Documentation
-This directory contains the SQL scripts required to model and load star-schema dimensions and analytical fact tables from the Silver Layer into the Gold Layer for the Retail Promotion Intelligence project (based on the Dunnhumby - The Complete Journey dataset).
+This directory contains the SQL scripts required to model and load star-schema dimensions and analytical fact tables from the Silver Layer into the Gold Layer for the Retail Promotion Intelligence project (based on the dunnhumby - The Complete Journey dataset).
 
 ## Overview:
 The Gold Layer represents the business and consumption layer within the Medallion Architecture (Bronze ➔ Silver ➔ Gold). It transforms cleaned operational data into dimensional models specifically designed to evaluate promotional effectiveness, incremental lift, and campaign ROI.
@@ -22,9 +22,9 @@ For full definitions and formulas behind these concepts, see the [Business Logic
 
 gold/
 ```
-├── 1_DDL Gold.sql                # DDL script defining Gold dimension & fact schemas, primary keys, and types
-├── 2_Procedure Load Gold.sql     # Stored procedure (gold.load_gold) executing end-to-end Silver ➔ Gold ETL logic
-├── 3_Index Gold.sql              # Post-load indexing script to optimize analytical queries across facts and dimensions
+├── 1_DDL_gold.sql                # DDL script defining Gold dimension & fact schemas, primary keys, and types
+├── 2_procedure_load_gold.sql     # Stored procedure (gold.load_gold) executing end-to-end Silver ➔ Gold ETL logic
+├── 3_index_gold.sql              # Post-load indexing script to optimize analytical queries across facts and dimensions
 └── Readme.md                     # Documentation for the gold folder
 ```
 
@@ -71,16 +71,21 @@ Key business and data processing highlights applied during the Silver ➔ Gold t
 ## Execution Guide:
 
 **Step 1: Create Tables (DDL)**
-Ensure Silver schema tables are loaded and accessible before executing Gold DDL:<br>
+Ensure Gold schema tables are loaded and accessible before executing Gold DDL:<br>
 **SQL**<br>
-EXEC 1_DDL_Gold.sql;
+EXEC 1_DDL_gold.sql;
 
-**Step 2: Execute Data Load**
+**Step 2: Create/Deploy the Gold Load Procedure**
+Execute the SQL script containing the gold.load_gold stored procedure. This creates or updates the procedure in the database.<br>
+**SQL**<br>
+EXEC 2_procedure_load_gold;
+
+**Step 3: Execute Data Load**
 Run the ETL pipeline stored procedure to process and load Gold dimension and fact tables:<br>
 **SQL**<br>
 EXEC gold.load_gold;
 
-**Step 3: Create Indexes**
+**Step 4: Create Indexes**
 Run the indexing script post-load to accelerate BI query performance across primary and foreign keys:<br>
 **SQL**<br>
-EXEC 3_Index_Gold.sql;
+EXEC 3_index_gold.sql;

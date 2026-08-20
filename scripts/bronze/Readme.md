@@ -1,5 +1,5 @@
 # Bronze Layer Documentation
-This directory contains the SQL scripts required to set up and populate the Bronze Layer of the data warehouse architecture for the Retail Promotion Intelligence project (based on the Dunnhumby - The Complete Journey dataset).
+This directory contains the SQL scripts required to set up and populate the Bronze Layer of the data warehouse architecture for the Retail Promotion Intelligence project (based on the dunnhumby - The Complete Journey dataset).
 
 ## Overview:
 The Bronze Layer acts as the raw landing zone for incoming data.
@@ -16,9 +16,9 @@ The Bronze Layer acts as the raw landing zone for incoming data.
 
 bronze/
 ```
-├── ddl_bronze.sql           # DDL script to create/redefine bronze tables
-├── proc_load_bronze.sql     # Stored procedure to bulk load raw data from CSVs
-└── README.md                # Documentation for the bronze folder
+├── 1_DDL_bronze.sql                # DDL script to create/redefine bronze tables
+├── 2_procedure_load_bronze.sql     # Stored procedure to bulk load raw data from CSVs
+└── Readme.md                       # Documentation for the bronze folder
 ```
 
 ## Ingested Tables:
@@ -41,11 +41,15 @@ Raw CSV files downloaded and stored in a accessible local or network directory.
 **Step 1: Create Tables (DDL)**
 Run ddl_bronze.sql to drop (if existing) and recreate all Bronze tables:<br>
 **SQL**<br>
--- Run in your SQL client
-EXEC ddl_bronze.sql;
+EXEC 1_DDL_bronze.sql;
 
-**Step 2: Execute Data Load**
+**Step 2: Create/Deploy the Bronze Load Procedure**
+Execute the SQL script containing the bronze.load_bronze stored procedure. This creates or updates the procedure in the database.<br>
+**SQL**<br>
+EXEC 2_procedure_load_bronze.sql;
+
+**Step 3: Execute Data Load**
 Execute the stored procedure by passing your local directory path using @base_path:<br>
 **SQL**<br>
 EXEC bronze.load_bronze 
-    @base_path = 'C:\Users\bhawa\OneDrive\Desktop\Dunnhumby- The Complete Journey Project\Retail-Promotion-Intelligence\dataset\'; (e.g.)
+    @base_path = 'C:\Users\bhawa\OneDrive\Desktop\Dunnhumby- The Complete Journey Project\Retail-Promotion-Intelligence\dataset\'; --(e.g.)

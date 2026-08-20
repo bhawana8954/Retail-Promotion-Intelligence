@@ -2,9 +2,38 @@
 
 > **Are promotions driving real incremental sales, or are they simply subsidizing purchases customers would have made anyway?**
 
-An end-to-end data analytics platform built on the Dunnhumby *"The Complete Journey"* retail dataset. It uses a Medallion (Bronze → Silver → Gold) architecture in SQL Server, with data quality testing in SQL as well as Python and a four-page Power BI dashboard, to separate genuine promotional lift from purchases that would have happened regardless.
+An end-to-end data analytics platform built on the dunnhumby *"The Complete Journey"* retail dataset. It uses a Medallion (Bronze → Silver → Gold) architecture in SQL Server, with data quality testing in SQL as well as Python and a four-page Power BI dashboard, to separate genuine promotional lift from purchases that would have happened regardless.
 
 ---
+
+## 🎯 Project Vision
+
+This project explores how retail promotions can be evaluated using **incremental sales rather than promotional sales alone**.
+
+The focus is on identifying which promotions, campaigns, stores, and customer segments generate genuine additional value — and where promotional spending may simply subsidize purchases that would have occurred without the promotion.
+
+## 🎯 Project Goals
+
+- Build an end-to-end **Bronze → Silver → Gold data warehouse** using SQL Server.
+- Transform raw retail data into a clean, analytics-ready **star schema**.
+- Establish behavioral **baseline sales** to estimate expected spending without promotion.
+- Measure **incremental sales lift** and identify **wasted promotional spend**.
+- Evaluate promotional effectiveness across **campaigns, coupons, mailers, displays, stores, categories, and household segments**.
+- Implement **SQL and Python data quality testing** across the analytical pipeline.
+- Deliver an interactive **Power BI dashboard** for business-focused analysis.
+
+---
+
+## 📑 Table of Contents
+
+- [Overview](#-overview)
+- [Architecture](#️-architecture)
+- [Tech Stack](#️-tech-stack)
+- [Repository Structure](#-repository-structure)
+- [Key Insights](#-key-insights)
+- [Getting Started](#-getting-started--full-execution-order)
+- [Documentation](#-documentation)
+- [Connect](#-connect)
 
 ## 🏗️ Architecture
 
@@ -32,24 +61,21 @@ See [`docs/data_model.png`](./docs/data_model.png) for the Gold-layer star schem
 ## 📁 Repository Structure
 
 ```text
-├── dataset/          # Source CSVs + sample files (see dataset/Readme.md for full-file download)
-├── docs/             # Business logic reference, architecture diagrams, dataset user guide
-├── powerbi/          # Dashboard PDF + report documentation
-├── python/           # Baseline/lift prototyping notebook
+├── dataset/
+├── docs/
+├── powerbi/
+├── python/
 ├── scripts/
-│   ├── bronze/       # Raw layer DDL + load procedure
-│   ├── silver/       # Cleaned layer DDL + load procedure + indexing
-│   ├── gold/         # Star-schema DDL + load procedure + indexing
-│   └── 0_initial database.sql
-├── tests/            # SQL + Python data quality checks (Silver & Gold)
+├── tests/
 └── README.md
 ```
+For a detailed explanation of each folder and file, including their purpose and role in the project, see the [Directory Structure](./docs/directory_structure.md) document.
 
 ---
 
 ## 📊 Key Insights
 
-Full detail, visuals, and interpretation notes: [`powerbi/Readme.md`](./powerbi/Readme.md) · [Dashboard PDF](./powerbi/Retail_Promotion_Intelligence_Dashboard.pdf)
+Full detail, visuals, and interpretation notes: [`powerbi/Readme.md`](./powerbi/Readme.md) · [Dashboard PDF](./powerbi/retail_promotion_intelligence_dashboard.pdf)
 
 | Page | Headline Finding |
 |---|---|
@@ -74,7 +100,8 @@ Full detail, visuals, and interpretation notes: [`powerbi/Readme.md`](./powerbi/
 ### 1. Clone the repository & get the full dataset
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/bhawana8954/Retail-Promotion-Intelligence.git
+cd Retail-Promotion-Intelligence
 ```
 
 `transaction_data.csv` and `causal_data.csv` exceed GitHub's file-size limits and aren't committed — 500-row samples are included instead. Follow [`dataset/Readme.md`](./dataset/Readme.md) to download the full official files and place them in the expected path.
@@ -83,32 +110,32 @@ git clone <repo-url>
 
 Run:
 ```
-scripts/0_initial database.sql
+scripts/0_DDL_initial_database.sql
 ```
 Creates the database and the `bronze`, `silver`, and `gold` schemas.
 
 ### 3. Build the Bronze layer
 
-1. Run `scripts/bronze/1_DDL Bronze.sql`
-2. Run `scripts/bronze/2_Procedure Load Bronze.sql`, then execute the load procedure it creates
+1. Run `scripts/bronze/1_DDL_bronze.sql`
+2. Run `scripts/bronze/2_procedure_load_bronze.sql`, then execute the load procedure it creates
 
 See [`scripts/bronze/Readme.md`](./scripts/bronze/Readme.md) for table descriptions and the exact execution command.
 
 ### 4. Build the Silver layer
 
-1. Run `scripts/silver/1_DDL Silver.sql`
-2. Run `scripts/silver/2_Procedure Load Silver.sql`, then execute the load procedure it creates
-3. Run `scripts/silver/3_Index Silver.sql`
+1. Run `scripts/silver/1_DDL_silver.sql`
+2. Run `scripts/silver/2_procedure_load_silver.sql`, then execute the load procedure it creates
+3. Run `scripts/silver/3_index_silver.sql`
 4. Run data quality checks: `tests/procedure_check_data_quality_silver.sql` and `pytest tests/test_data_quality_silver.py`
 
 See [`scripts/silver/Readme.md`](./scripts/silver/Readme.md) for table descriptions and the exact execution command.
 
 ### 5. Build the Gold layer
 
-1. Run `scripts/gold/1_DDL Gold.sql`
-2. Run `scripts/gold/2_Procedure Load Gold.sql`, then execute `EXEC gold.load_gold;`
-3. Run `scripts/gold/3_Index Gold.sql`
-4. Run data quality checks: `tests/procedure_dimension_check_data_quality_gold.sql`, `tests/procedure_fact_check_data_quality_gold.sql`, and `pytest tests/test_data_quality_gold.py`
+1. Run `scripts/gold/1_DDL_gold.sql`
+2. Run `scripts/gold/2_procedure_load_gold.sql`, then execute `EXEC gold.load_gold;`
+3. Run `scripts/gold/3_index_gold.sql`
+4. Run data quality checks: `tests/procedure_check_data_quality_dimension_gold.sql`, `tests/procedure_check_data_quality_fact_gold.sql`, and `pytest tests/test_data_quality_gold.py`
 
 See [`scripts/gold/Readme.md`](./scripts/gold/Readme.md) for table descriptions and the full execution guide.
 
@@ -123,57 +150,21 @@ Open the `.pbix` in Power BI Desktop, connect to the `gold` schema, and refresh.
 | Doc | Covers |
 |---|---|
 | [`docs/business_logic_and_terminology.md`](./docs/business_logic_and_terminology.md) | Core business logic, formulas, DAX/Power BI terminology, glossary |
+| [`docs/Directory_Structure.md`](./docs/Directory_Structure.md) | Detailed repository structure and file/folder descriptions |
 | [`scripts/bronze/Readme.md`](./scripts/bronze/Readme.md) | Bronze table descriptions + load procedure |
 | [`scripts/silver/Readme.md`](./scripts/silver/Readme.md) | Silver table descriptions + load procedure + DQ checks |
 | [`scripts/gold/Readme.md`](./scripts/gold/Readme.md) | Gold star-schema, table descriptions, transformations, execution guide |
 | [`powerbi/Readme.md`](./powerbi/Readme.md) | Dashboard pages, interactive features, key findings |
 | [`dataset/Readme.md`](./dataset/Readme.md) | Dataset source + full-file download instructions |
 
-## Folder Structure
-```
-├── dataset/
-|   ├── samples/
-|   │ ├── causal_data_sample.csv
-|   │ └── transaction_data_sample.csv
-|   ├── campaign_desc.csv
-|   ├── campaign_table.csv
-|   ├── coupon_redempt.csv
-|   ├── coupon.csv
-|   ├── hh_demographic.csv
-|   ├── product.csv
-|   └── Readme.md    # source + download instructions for full files
-├── docs/
-|   ├── business_logic_and_terminology.md
-|   ├── data_architecture.png
-|   ├── data_integration.png
-|   ├── data_model.png
-|   └── dunnhumby - The Complete Journey User Guide.pdf
-├── powerbi/
-|   ├── Readme.md  
-|   └── Retail_Promotion_Intelligence_Dashboard.pdf
-├── python/
-|   └── baseline_and_lift_prototyping.ipynb
-├── scripts/
-|   ├── bronze/
-|   |   ├── 1_DDL Bronze.sql
-|   |   ├── 2_Procedure Load Bronze.sql
-|   |   └── Readme.md     # contain tables descriptions as well
-|   ├── gold/
-|   |   ├── 1_DDL Gold.sql
-|   |   ├── 2_Procedure Load Gold.sql
-|   |   ├── 3_Index Gold.sql
-|   |   └── Readme.md    # contain tables descriptions as well
-|   ├── silver/
-|   |   ├── 1_DDL Silver.sql
-|   |   ├── 2_Procedure Load Silver.sql
-|   |   ├── 3_Index Silver.sql
-|   |   └── Readme.md    # contain tables descriptions as well
-|   └── 0_initial database.sql
-├── tests/
-|   ├── procedure_check_data_quality_silver.sql
-|   ├── procedure_dimension_check_data_quality_gold.sql
-|   ├── procedure_fact_check_data_quality_gold.sql
-|   ├── test_data_quality_gold.py
-|   └── test_data_quality_silver.py
-├── .gitignore
-└── README.md
+## 👩‍💻 About the Author
+
+**Bhawana Bhatt** — Mathematics postgraduate and aspiring Data Analyst with an interest in **SQL, data warehousing, Python, and Power BI**.
+
+This project was developed as a portfolio project to demonstrate an end-to-end approach to **data engineering, data quality, business analytics, and visualization**.
+
+### 🔗 Connect
+
+- 💼 [LinkedIn](www.linkedin.com/in/bhawanabhatt21)
+- 💻 [GitHub](https://github.com/bhawana8954)
+- 📊 [Project Repository](https://github.com/bhawana8954/Retail-Promotion-Intelligence)
