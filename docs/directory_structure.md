@@ -20,7 +20,7 @@
 |   ├── business_logic_and_terminology.md                  # Business definitions, formulas, and terminology
 |   ├── data_architecture.png                              # Overall Bronze → Silver → Gold architecture
 |   ├── data_integration.png                               # End-to-end data integration and processing flow
-|   ├── data_model.png                                     # Gold-layer star schema and table relationships
+|   ├── data_model.png                                     # Gold-layer galaxy schema and table relationships
 |   ├── Directory_Structure.md                             # Detailed repository structure and file descriptions
 |   └── dunnhumby - The Complete Journey User Guide.pdf    # Original dataset user guide
 |

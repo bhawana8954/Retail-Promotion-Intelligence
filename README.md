@@ -15,7 +15,7 @@ The focus is on identifying which promotions, campaigns, stores, and customer se
 ## 🎯 Project Goals
 
 - Build an end-to-end **Bronze → Silver → Gold data warehouse** using SQL Server.
-- Transform raw retail data into a clean, analytics-ready **star schema**.
+- Transform raw retail data into a clean, analytics-ready **galaxy schema**.
 - Establish behavioral **baseline sales** to estimate expected spending without promotion.
 - Measure **incremental sales lift** and identify **wasted promotional spend**.
 - Evaluate promotional effectiveness across **campaigns, coupons, mailers, displays, stores, categories, and household segments**.
@@ -42,9 +42,9 @@ The focus is on identifying which promotions, campaigns, stores, and customer se
 |---|---|
 | **Bronze** | Raw data loaded as-is from source CSVs, no transformation |
 | **Silver** | Cleaned, standardized, deduplicated data with data quality checks and explicit unknown-record handling |
-| **Gold** | Star-schema dimensional model with behavioral baselines, incremental lift, and wasted spend calculated |
+| **Gold** | Galaxy-schema dimensional model with behavioral baselines, incremental lift, and wasted spend calculated |
 
-See [`docs/data_model.png`](./docs/data_model.png) for the Gold-layer star schema and [`docs/data_integration.png`](./docs/data_integration.png) for the end-to-end data flow.
+See [`docs/data_model.png`](./docs/data_model.png) for the Gold-layer galaxy schema and [`docs/data_integration.png`](./docs/data_integration.png) for the end-to-end data flow.
 
 ---
 
@@ -80,7 +80,7 @@ Full detail, visuals, and interpretation notes: [`powerbi/Readme.md`](./powerbi/
 |---|---|
 | **Executive Overview** | ~$1.45M in discount spend generated only ~$230.66K in incremental sales (~6× spend-to-lift, roughly $0.16 incremental sales per $1 spent). 18.97% of spend was wasted. |
 | **Campaign & Coupon Performance** | Total incremental lift across campaigns is ~-$24.86M; most campaigns run 85–93% below baseline. Coupon redemption rate: 39.80%. |
-| **In-Store Promotion Effectiveness** | Mailer promotions generate positive lift (~$1.15K/day); display promotions generate negative lift (~-$167.71/day). |
+| **In-Store Promotion Effectiveness** | Mailer promotions generate positive lift (\~$1.15K/day); display promotions generate negative lift (\~-$167.71/day). |
 | **Household Segments & Loyalty** | Across 1,584 targeted households, average incremental lift is $690.28/household. Middle-age segments outperform the average by 59–78%. |
 
 **Overall takeaway:** promotional strategy should move from broad, uniform discounting toward campaign-, mechanism-, and customer-segment-level evaluation. See [`docs/business_logic_and_terminology.md`](./docs/business_logic_and_terminology.md) for the definitions and formulas behind these numbers.
@@ -152,7 +152,7 @@ Open the `.pbix` in Power BI Desktop, connect to the `gold` schema, and refresh.
 | [`docs/Directory_Structure.md`](./docs/Directory_Structure.md) | Detailed repository structure and file/folder descriptions |
 | [`scripts/bronze/Readme.md`](./scripts/bronze/Readme.md) | Bronze table descriptions + load procedure |
 | [`scripts/silver/Readme.md`](./scripts/silver/Readme.md) | Silver table descriptions + load procedure + DQ checks |
-| [`scripts/gold/Readme.md`](./scripts/gold/Readme.md) | Gold star-schema, table descriptions, transformations, execution guide |
+| [`scripts/gold/Readme.md`](./scripts/gold/Readme.md) | Gold galaxy-schema, table descriptions, transformations, execution guide |
 | [`powerbi/Readme.md`](./powerbi/Readme.md) | Dashboard pages, interactive features, key findings |
 | [`dataset/Readme.md`](./dataset/Readme.md) | Dataset source + full-file download instructions |
 

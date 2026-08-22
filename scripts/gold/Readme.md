@@ -1,5 +1,5 @@
 # Gold Layer Documentation
-This directory contains the SQL scripts required to model and load star-schema dimensions and analytical fact tables from the Silver Layer into the Gold Layer for the Retail Promotion Intelligence project (based on the dunnhumby - The Complete Journey dataset).
+This directory contains the SQL scripts required to model and load galaxy-schema dimensions and analytical fact tables from the Silver Layer into the Gold Layer for the Retail Promotion Intelligence project (based on the dunnhumby - The Complete Journey dataset).
 
 ## Overview:
 The Gold Layer represents the business and consumption layer within the Medallion Architecture (Bronze ➔ Silver ➔ Gold). It transforms cleaned operational data into dimensional models specifically designed to evaluate promotional effectiveness, incremental lift, and campaign ROI.

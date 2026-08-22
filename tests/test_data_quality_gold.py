@@ -8,14 +8,16 @@ Script Purpose:
         - Null checks on required columns across dimension and fact tables
         - Duplicate key checks on unique primary and composite keys
         - Referential integrity checks validating child FKs exist in parent dimensions
-        - Row-count reconciliation comparing gold facts against silver sources
+        - Row-count reconciliation comparing gold tables against silver sources
         - Business threshold checks (MIN_DAYS >= 5 filter in gold.fact_campaign_lift)
-        - Redemption event integrity checks (DISTINCT redemption_event_key count 
-          matching silver source to account for product fan-out)
+        - Redemption event population checks (row count vs. a DISTINCT silver-side
+          grain to account for product fan-out)
 
-    Each check is parametrized where applicable (nulls, duplicates, referential
-    integrity, row counts) so a single test function covers every configured 
-    table/column combination dynamically.
+    Null checks, duplicate key checks, and referential integrity checks are
+    parametrized dynamically off the TABLE_CHECKS config, so one test function
+    covers every configured table/column combination. Row-count reconciliation
+    and business-logic checks are implemented as individual per-table test
+    functions.
 
 Usage Example:
     & "D:\Python 3.14.0\python.exe" -m pytest tests/test_data_quality_gold.py -v

@@ -3,28 +3,29 @@
 Stored Procedure: Load Gold Layer (Silver -> Gold)
 ======================================================================================
 Script Purpose:
-    Executes the full ETL pipeline to transform Silver layer data into Gold 
+    Executes the full ETL pipeline to transform Silver layer data into Gold
     business entities (dimensions) and key performance metrics (fact tables).
 
 Key Business Questions Answered:
-    - Incremental Lift: How much additional revenue did campaigns generate compared to normal, non-promotional customer spending?
-    - Promotional ROI & Wasted Spend: Are discount investments driving extra volume or subsidizing purchases customers would 
-	  have made anyway?
-    - Causal & Channel Impact: How effectively do feature ads (mailers) and in-store displays drive category-level sales and 
-	  unit lift across stores?
+    - Incremental Lift: How much additional revenue did campaigns generate compared
+      to a household's normal, non-promotional spending?
+    - Promotional ROI & Wasted Spend: Are discount dollars driving new purchases,
+      or subsidizing purchases customers would have made anyway?
+    - Causal & Channel Impact: How effectively do mailers and in-store displays
+      drive category-level sales and unit lift across stores?
 
 Key Processing Logic:
-    1. Dynamic Date Generation: Calculates campaign & transaction max ranges to populate `gold.dim_date` recursively[cite: 1].
-    2. Dimension Normalization: Categorizes store supplies, catch-all items, and unknown records for households, products, 
-	   campaigns, and coupons[cite: 1].
-    3. Executive Summary Aggregations: Computes household-level daily spend rates on non-campaign baseline days and measures 
-	   total vs. floored wasted promotional spend[cite: 1].
-    4. Promotional & Campaign Lift:
-       - Normalizes baseline spend per day with `ISNULL()` protections against zero-day divisions to track incremental 
-	     lift[cite: 1].
-       - Maps campaign coupons to primary product categories to evaluate targeted vs. behavioral baseline performance[cite: 1].
-    5. Causal & Segment Tracking: Measures display and mailer promotional combinations across store-commodity grains and 
-	   tracks campaign lift per household segment[cite: 1].
+    1. Dynamic Date Generation: calculates the full campaign/transaction date range
+       and generates gold.dim_date recursively to match it.
+    2. Dimension Normalization: builds households, products, campaigns, coupons,
+       and a degenerate store dimension, flagging unknown/unmatched records.
+    3. Behavioral Baseline: computes each household's non-campaign daily spend
+       rate (min. 5-day sample required) and measures total vs. floored wasted
+       promotional spend.
+    4. Campaign Lift: scopes spend to actually-targeted households, comparing
+       campaign-period spend against each household's behavioral baseline.
+    5. Causal & Segment Tracking: measures display/mailer promotion combinations
+       by store and category, and tracks campaign lift per household.
 
 Parameters:
     None.

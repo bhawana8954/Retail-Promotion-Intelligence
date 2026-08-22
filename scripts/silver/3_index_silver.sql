@@ -1,17 +1,16 @@
 /*
-======================================================================================
+==================================================================================
 Script: Create Silver Layer Performance Indexes
-======================================================================================
+==================================================================================
 Script Purpose:
-    Creates nonclustered indexes to improve:
-        - Data quality checks
-        - Referential integrity checks
-        - Duplicate/grain checks
-        - Common Silver-layer joins
+    Creates nonclustered indexes to improve query performance for:
+        - Data quality and referential integrity checks
+        - Duplicate, primary key, and grain validation
+        - Join and aggregation performance during Gold layer transformations
 
-    These indexes do NOT change the data or DQ results.
-    They only improve query performance.
-======================================================================================
+    These indexes do NOT alter the underlying data or validation results.
+    They purely optimize query execution speeds across Silver and Gold workflows.
+==================================================================================
 */
 
 -- ===============================================================

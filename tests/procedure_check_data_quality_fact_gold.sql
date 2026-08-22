@@ -1,14 +1,14 @@
 /*
 ======================================================================================
-Stored Procedure: Check Data Quality (Gold Layer)
+Stored Procedure: Check Data Quality (Gold Layer - Fact Tables)
 ======================================================================================
 Script Purpose:
-	Runs data quality checks against the 'gold' schema physical tables:
+	Runs data quality checks against the 'gold' schema fact tables:
 		- Row count checks (Gold table vs. Silver source)
 		- Duplicate key checks
 		- Referential integrity checks (orphaned FKs)
 		- Range/sequence checks
-		- Behavioral & aggregate sanity checks across all 13 gold entities
+		- Behavioral & aggregate sanity checks across all 7 gold fact entities
 	Prints a PASS/FAIL for each check, plus a final summary.
 
 Usage Example:

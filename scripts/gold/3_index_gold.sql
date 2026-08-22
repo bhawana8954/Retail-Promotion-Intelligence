@@ -5,7 +5,7 @@ Script: Create Gold Layer Performance Indexes
 Script Purpose:
     Creates nonclustered indexes across all Gold dimension and fact tables to improve:
         - Downstream reporting & BI dashboard query performance (Power BI / Tableau)
-        - Star-schema JOIN efficiency between fact and dimension tables
+        - Galaxy-schema JOIN efficiency between fact and dimension tables
         - Filtering & aggregation performance on dates, households, campaigns, and stores
     These indexes do NOT alter table structures or data values.
     They purely optimize query execution speed.
